@@ -1,0 +1,10 @@
+{
+  "packageId": "0x53f1141eb37ba5d0234b2a5054c7c886124fc1279ef50c307665363c8dd2bd29",
+  "initialPackageId": "0x002875153e09f8145ab63527bc85c00f2bd102e12f9573c47f8cdf1a1cb62934",
+  "upgradeCapId": "0x566213dcb16f2ac9d02a20147617c8d4d0b000a455f0e2a0e94d1f18abd7baa1",
+  "publisherIds": [],
+  "adminCap": "0xc486afa253646f4d381e81d7f1df8aa4723b845a6bb356f69bad635ffefffe2c",
+  "incentiveConfig": "0xdf5d04b4691cc67e82fd4db8394d89ff44823a9de29716c924f74bb4f11cc1f7",
+  "incentivePools": "0x6547e143d406b5ccd5f46aae482497de279cc1a68c406f701df70a05f9212ab4",
+  "incentiveAccounts": "0xc4701fdbc1c92f9a636d334d66012b3027659e9fb8aff27279a82edfb6b77d02"
+}
