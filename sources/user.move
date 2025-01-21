@@ -91,7 +91,26 @@ module borrow_incentive::user {
         clock: &Clock,
         ctx: &mut TxContext,
     ) {
-        abort 0
+        borrow_incentive::incentive_config::assert_version_and_status(incentive_config);
+        borrow_incentive::incentive_account::assert_incentive_pools(incentive_accounts, incentive_pools);
+        assert_key_match(obligation, obligation_key);
+        borrow_incentive::incentive_account::create_if_not_exists(incentive_accounts, obligation, ctx);
+        let v0 = borrow_incentive::typed_id::new<VeScaKey>(ve_sca_key);
+        if (borrow_incentive::incentive_account::is_ve_sca_key_binded(incentive_accounts, obligation) == false) {
+            assert!(borrow_incentive::incentive_pool::is_ve_sca_binded(incentive_pools, v0) == false, 1);
+            borrow_incentive::incentive_pool::bind_ve_sca_to_incentive_account(incentive_pools, v0, borrow_incentive::typed_id::new<Obligation>(obligation));
+            borrow_incentive::incentive_account::bind_ve_sca(incentive_accounts, obligation, v0);
+        };
+        assert!(borrow_incentive::typed_id::to_id<VeScaKey>(borrow_incentive::incentive_account::get_binded_ve_sca(incentive_accounts, obligation)) == borrow_incentive::typed_id::to_id<VeScaKey>(v0), 2);
+        update_points_internal(incentive_pools, incentive_accounts, obligation, clock);
+        refresh(ve_sca_config, ve_sca_treasury, clock);
+        borrow_incentive::incentive_account::stake(obligation_key, obligation, obligation_access_store, incentive_accounts, incentive_pools, ve_sca_amount(sui::object::id<VeScaKey>(ve_sca_key), ve_sca_table, clock), total_ve_sca_amount(ve_sca_treasury, clock), ctx);
+        let v1 = IncentiveAccountStakeEvent{
+            obligation_id : sui::object::id<Obligation>(obligation), 
+            pool_records  : borrow_incentive::incentive_account::pool_records_data(incentive_accounts, obligation), 
+            timestamp     : sui::clock::timestamp_ms(clock) / 1000,
+        };
+        sui::event::emit<IncentiveAccountStakeEvent>(v1);
     }
 
     public entry fun stake(
