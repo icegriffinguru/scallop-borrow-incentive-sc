@@ -22,14 +22,15 @@ module borrow_incentive::incentive_config {
     public fun enabled(config: &IncentiveConfig): bool { config.enabled }
 
     public fun assert_enabled(incentive_config: &IncentiveConfig) {
-        abort 0
+        assert!(incentive_config.enabled, 1);
     }
-
+    
     public fun assert_version(incentive_config: &IncentiveConfig) {
-        abort 0
+        assert!(incentive_config.version == 1, 2);
     }
 
     public fun assert_version_and_status(incentive_config: &IncentiveConfig) {
-        abort 0
+        assert_enabled(incentive_config);
+        assert_version(incentive_config);
     }
 }

@@ -15,6 +15,9 @@ module borrow_incentive::user {
     use borrow_incentive::utils::mul_div;
     use borrow_incentive::typed_id;
     use {Self, IncentiveConfig};
+    use borrow_incentive::incentive_pool;
+    use borrow_incentive::incentive_config;
+    use borrow_incentive::incentive_account;
 
     use protocol::market::Market;
     use protocol::obligation::{Self, Obligation, ObligationKey};
@@ -137,15 +140,33 @@ module borrow_incentive::user {
     }
 
     public entry fun unstake(
-        incentive_config: &IncentiveConfig,
-        incentive_pools: &mut IncentivePools,
-        incentive_accounts: &mut IncentiveAccounts,
-        obligation_key: &ObligationKey,
-        obligation: &mut Obligation,
-        clock: &Clock,
-        ctx: &mut TxContext,
+        incentive_config: &incentive_config::IncentiveConfig,
+        incentive_pools: &mut incentive_pool::IncentivePools,
+        incentive_accounts: &mut incentive_account::IncentiveAccounts,
+        obligation_key: &obligation::ObligationKey,
+        obligation: &mut obligation::Obligation,
+        clock: &sui::clock::Clock,
+        ctx: &mut sui::tx_context::TxContext
     ) {
-        abort 0
+        incentive_config::assert_version_and_status(incentive_config);
+        incentive_account::assert_incentive_pools(incentive_accounts, incentive_pools);
+        obligation::assert_key_match(obligation, obligation_key);
+        if (!incentive_account::is_incentive_account_exist(incentive_accounts, obligation)) {
+            return
+        };
+        if (incentive_account::is_ve_sca_key_binded(incentive_accounts, obligation) == true) {
+            incentive_pool::unbind_ve_sca_from_incentive_account(incentive_pools, incentive_account::get_binded_ve_sca(incentive_accounts, obligation), typed_id::new<obligation::Obligation>(obligation));
+            incentive_account::unbind_ve_sca(incentive_accounts, obligation);
+        };
+        update_points_internal(incentive_pools, incentive_accounts, obligation, clock);
+        incentive_account::unstake(obligation_key, obligation, incentive_accounts, incentive_pools);
+
+        let v0 = IncentiveAccountUnstakeEvent{
+            obligation_id : sui::object::id<obligation::Obligation>(obligation), 
+            sender        : sui::tx_context::sender(ctx), 
+            timestamp     : sui::clock::timestamp_ms(clock) / 1000,
+        };
+        sui::event::emit<IncentiveAccountUnstakeEvent>(v0);
     }
 
     public entry fun force_unstake_unhealthy(
