@@ -295,16 +295,51 @@ module borrow_incentive::user {
     }
 
     public fun redeem_rewards<RewardType>(
-        incentive_config: &IncentiveConfig,
-        incentive_pools: &mut IncentivePools,
-        incentive_accounts: &mut IncentiveAccounts,
-        obligation_key: &ObligationKey,
-        obligation: &Obligation,
-        clock: &Clock,
-        ctx: &mut TxContext,
-    ): Coin<RewardType> {
-        abort 0
+        incentive_config: &borrow_incentive::incentive_config::IncentiveConfig,
+        incentive_pools: &mut borrow_incentive::incentive_pool::IncentivePools,
+        incentive_accounts: &mut borrow_incentive::incentive_account::IncentiveAccounts,
+        obligation_key: &protocol::obligation::ObligationKey,
+        obligation: &protocol::obligation::Obligation,
+        clock: &sui::clock::Clock,
+        ctx: &mut sui::tx_context::TxContext
+    ) : sui::coin::Coin<RewardType> {
+        borrow_incentive::incentive_config::assert_version_and_status(incentive_config);
+        borrow_incentive::incentive_account::assert_incentive_pools(incentive_accounts, incentive_pools);
+
+        protocol::obligation::assert_key_match(obligation, obligation_key);
+        if (!borrow_incentive::incentive_account::is_incentive_account_exist(incentive_accounts, obligation)) {
+            return sui::coin::zero<RewardType>(ctx)
+        };
+
+        update_points_internal(incentive_pools, incentive_accounts, obligation, clock);
+        let v0 = borrow_incentive::incentive_account::claim_rewards<RewardType>(obligation, incentive_pools, incentive_accounts);
+        let v1 = sui::balance::value<RewardType>(&v0);
+        let (v2, v3) = borrow_incentive::incentive_pool::reward_fee(incentive_pools);
+        let v4 = if (v3 > 0) {
+            borrow_incentive::utils::mul_div(v1, v2, v3)
+        } else {
+            0
+        };
+
+        let v5 = IncentiveAccountRedeemRewardsEvent{
+            sender       : sui::tx_context::sender(ctx), 
+            rewards_type : 0x1::type_name::get<RewardType>(), 
+            rewards      : v1, 
+            rewards_fee  : v4, 
+            timestamp    : sui::clock::timestamp_ms(clock) / 1000,
+        };
+        sui::event::emit<IncentiveAccountRedeemRewardsEvent>(v5);
+
+        if (v4 > 0) {
+            sui::transfer::public_transfer<sui::coin::Coin<RewardType>>(
+                sui::coin::from_balance<RewardType>(sui::balance::split<RewardType>(&mut v0, v4), ctx),
+                borrow_incentive::incentive_pool::reward_fee_recipient(incentive_pools)
+            );
+        };
+        
+        sui::coin::from_balance<RewardType>(v0, ctx)
     }
+    
 
     fun update_points_internal(
         arg0: &mut IncentivePools,
